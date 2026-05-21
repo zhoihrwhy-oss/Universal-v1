@@ -140,8 +140,9 @@ fadeStatus:Play()
 -- Hapus GUI dari game setelah benar-benar tidak terlihat
 fadeBg.Completed:Connect(function()
 	screenGui:Destroy()
-   ----------------------------------------------------
--- DIABLO SCRIPT UNIVERSAL | WINDUI LOADER + KEY SYSTEM
+end)
+----------------------------------------------------
+-- WINDUI LOADER
 ----------------------------------------------------
 local _version = "1.6.63"
 local WindUI
@@ -158,20 +159,24 @@ do
             return loadstring(src)()
         end)
         if ok and result then WindUI = result break end
-        warn("[Diablo] WindUI attempt " .. i .. " failed: " .. tostring(result))
+        warn("[Sodium] WindUI attempt " .. i .. " failed: " .. tostring(result))
         if i < maxTries then task.wait(2) end
     end
-    if not WindUI then error("[Diablo] Failed to load WindUI") end
+    if not WindUI then error("[Sodium] Failed to load WindUI") end
 end
 
 local Players            = game:GetService("Players")
 local RunService         = game:GetService("RunService")
+local StatsService       = game:GetService("Stats")
+local MarketplaceService = game:GetService("MarketplaceService")
+local TeleportService    = game:GetService("TeleportService")
 local UserInputService   = game:GetService("UserInputService")
-local TweenService       = game:GetService("TweenService")
+local SoundService       = game:GetService("SoundService")
 local HttpService        = game:GetService("HttpService")
+local VirtualUser        = game:GetService("VirtualUser")
 
 local LocalPlayer = Players.LocalPlayer
-local Camera      = workspace.CurrentCamera
+local isMobile    = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 local fileSupported = (
     type(isfolder)   == "function" and
@@ -181,22 +186,24 @@ local fileSupported = (
     type(writefile)  == "function"
 )
 
-local configFolder = "DiabloScript"
+local configFolder = "SodiumHub"
 local configFile   = configFolder .. "/config.json"
-local keyAuthFile  = configFolder .. "/key_auth.json"
 
 local defaultConfig = {
+    background     = "",
+    logo           = "9090973238", -- Updated Icon
     theme          = "Dark",
-    aimbotEnabled  = false,
-    fovRadius      = 150,
-    infJump        = false,
-    walkSpeed      = 16,
-    jumpPower      = 50,
-    spinSpeed      = 0,
-    autoClick      = false,
-    clickDelay     = 1,
-    fastAttack     = false,
-    floatingBlock  = false
+    buttonsType    = "Mac",
+    customPfp      = "",
+    customName     = "",
+    customSubName  = "",
+    anonymous      = false,
+    selectedSound  = "107004225739474",
+    customSounds   = {},
+    execPoints     = 0,
+    webhookUrl     = "",
+    webhookEnabled = false,
+    cooldownTime   = 60,
 }
 
 local function loadConfig()
@@ -225,338 +232,376 @@ local function saveConfig(cfg)
 end
 
 local config = loadConfig()
+config.execPoints = (config.execPoints or 0) + 1
+saveConfig(config)
 
-local function hasValidKeySaved()
-    if fileSupported and isfile(keyAuthFile) then
-        local ok, data = pcall(function()
-            return HttpService:JSONDecode(readfile(keyAuthFile))
-        end)
-        if ok and data democracy and data.key == "no key" then
-            return true
-        end
-    end
-    return false
+local WebhookURL     = config.webhookUrl     or ""
+local WebhookEnabled = config.webhookEnabled or false
+local CooldownTime   = config.cooldownTime   or 60
+
+----------------------------------------------------
+-- THEME GRADIENT MAP
+----------------------------------------------------
+local ThemeGradients = {
+    Dark             = { a="#888888", b="#333333", c="#0a0a0a" },
+    Light            = { a="#ffffff", b="#cccccc", c="#aaaaaa" },
+    Rose             = { a="#ff8fa3", b="#ff4d6d", c="#000000" },
+    Plant            = { a="#95d5b2", b="#52b788", c="#000000" },
+    Red              = { a="#ff6b6b", b="#e63946", c="#000000" },
+    Indigo           = { a="#a5b4fc", b="#6366f1", c="#000000" },
+    Sky              = { a="#7dd3fc", b="#38bdf8", c="#000000" },
+    Violet           = { a="#c4b5fd", b="#8b5cf6", c="#000000" },
+    Amber            = { a="#fcd34d", b="#f59e0b", c="#000000" },
+    Emerald          = { a="#6ee7b7", b="#10b981", c="#000000" },
+    Midnight         = { a="#334155", b="#1e293b", c="#0f172a" },
+    Crimson          = { a="#fb7185", b="#e11d48", c="#000000" },
+}
+
+local function getThemeAccent(themeName)
+    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
+    return Color3.fromHex(g.b)
 end
 
-local function saveValidKey()
-    if fileSupported then
-        if not isfolder(configFolder) then makefolder(configFolder) end
-        writefile(keyAuthFile, HttpService:JSONEncode({key = "no key"}))
+local darkShapeThemes = {
+    Rose=true, Plant=true, Red=true,   Indigo=true,
+    Sky=true,  Violet=true, Amber=true, Emerald=true,
+    Crimson=true,
+}
+
+local function getTabIconColor(themeName)
+    if darkShapeThemes[themeName] then
+        return Color3.fromHex("#0a0a0a") 
     end
+    return getThemeAccent(themeName)
+end
+
+local function makeThemeGradient(themeName)
+    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
+    return WindUI:Gradient({
+        [0]   = { Color=Color3.fromHex(g.a), Transparency=0 },
+        [50]  = { Color=Color3.fromHex(g.b), Transparency=0 },
+        [100] = { Color=Color3.fromHex(g.c), Transparency=0 },
+    }, { Rotation=45 })
+end
+
+local function makeOpenButtonColor(themeName)
+    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
+    return ColorSequence.new({
+        ColorSequenceKeypoint.new(0,   Color3.fromHex(g.a)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromHex(g.b)),
+        ColorSequenceKeypoint.new(1,   Color3.fromHex(g.c)),
+    })
 end
 
 ----------------------------------------------------
--- MAIN UI LOAD FUNCTION
+-- THEME IMAGE MAP
 ----------------------------------------------------
-local function LoadMainScript()
-    -- Visual Circle FOV
-    local FOVCircle = Drawing.new("Circle")
-    FOVCircle.Thickness = 1.5
-    FOVCircle.Filled = false
-    FOVCircle.Color = Color3.fromRGB(255, 0, 0)
-    FOVCircle.Transparency = 0.7
-    FOVCircle.Visible = config.aimbotEnabled
+local ThemeImages = {
+    Dark             = { img="136481007766661" },
+    Amber            = { img="95128033219028"  },
+    Light            = { img="103289004814551" },
+    Rose             = { img="128965390137681" },
+    Red              = { img="128965390137681" },
+    Crimson          = { img="128965390137681" },
+    Sky              = { img="115965625673091" },
+    Midnight         = { img="115965625673091" },
+    Indigo           = { img="100706133773186" },
+    Violet           = { img="100706133773186" },
+    Emerald          = { img="72882008403843"  },
+    Plant            = { img="72882008403843"  },
+}
 
-    local function getClosestPlayer()
-        local closestTarget = nil
-        local shortestDistance = config.fovRadius
+local function getThemeImgs(themeName)
+    return ThemeImages[themeName] or ThemeImages["Dark"]
+end
 
-        for _, player in ipairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
-                local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
-                if onScreen then
-                    local mousePos = UserInputService:GetMouseLocation()
-                    local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                    if distance < shortestDistance then
-                        closestTarget = player
-                        shortestDistance = distance
-                    end
-                end
-            end
-        end
-        return closestTarget
+----------------------------------------------------
+-- PLAYER INFO HELPERS
+----------------------------------------------------
+local function getExecRole(pts)
+    if pts <= 10  then return "Explore Time"   end
+    if pts <= 50  then return "Sodium Enjoyer" end
+    return "Sodium Lover"
+end
+
+local devList = { "lost_metamofuruze" }
+
+local function getPlayerRole()
+    local name = LocalPlayer.Name:lower()
+    for _, dev in ipairs(devList) do
+        if name == dev:lower() then return "🛠 Dev" end
     end
+    return "★ User"
+end
 
-    local clickTimer = 0
-    local spinAngle = 0
-    local floatPart = nil
+local function getExecutorName()
+    if type(identifyexecutor) == "function" then
+        local ok, n = pcall(identifyexecutor)
+        if ok and n then return tostring(n) end
+    end
+    if type(getexecutorname) == "function" then
+        local ok, n = pcall(getexecutorname)
+        if ok and n then return tostring(n) end
+    end
+    if syn         then return "Synapse X" end
+    if KRNL_LOADED then return "Krnl"      end
+    return "Unknown"
+end
 
-    RunService.RenderStepped:Connect(function(dt)
-        local character = LocalPlayer.Character
-        if not character then return end
-        local rootPart = character:FindFirstChild("HumanoidRootPart")
-        local humanoid = character:FindFirstChildOfClass("Humanoid")
-        
-        FOVCircle.Radius = config.fovRadius
-        FOVCircle.Position = UserInputService:GetMouseLocation()
-        
-        if config.aimbotEnabled then
-            local target = getClosestPlayer()
-            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-                local targetPos = target.Character.HumanoidRootPart.Position
-                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
-            end
-        end
-        
-        if humanoid then
-            humanoid.WalkSpeed = config.walkSpeed
-            if humanoid.UseJumpPower then
-                humanoid.JumpPower = config.jumpPower
-            else
-                humanoid.JumpHeight = config.jumpPower / 3.5
-            end
-        end
-        
-        if rootPart and config.spinSpeed > 0 then
-            spinAngle = (spinAngle + config.spinSpeed * dt * 10) % 360
-            rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, math.deg(spinAngle), 0)
-        end
-        
-        if config.autoClick then
-            clickTimer = clickTimer + dt
-            local delayThreshold = 1 / math.clamp(config.clickDelay, 1, 3)
-            if clickTimer >= delayThreshold then
-                clickTimer = 0
-                local tool = character:FindFirstChildOfClass("Tool")
-                if tool then
-                    tool:Activate()
-                end
-            end
-        end
-        
-        if config.fastAttack then
-            local tool = character:FindFirstChildOfClass("Tool")
-            if tool and tool:FindFirstChild("Animation") then
-                for _, state in ipairs(humanoid:GetPlayingAnimationTracks()) do
-                    if state.Animation.AnimationId == tool.Animation.AnimationId then
-                        state:AdjustSpeed(100)
-                    end
-                end
-            end
-        end
-        
-        if config.floatingBlock and rootPart then
-            if not floatPart or not floatPart.Parent then
-                floatPart = Instance.new("Part")
-                floatPart.Size = Vector3.new(6, 0.5, 6)
-                floatPart.Transparency = 0.5
-                floatPart.Color = Color3.fromRGB(130, 20, 180)
-                floatPart.Material = Enum.Material.ForceField
-                floatPart.Anchored = true
-                floatPart.Parent = workspace
-            end
-            floatPart.Position = rootPart.Position - Vector3.new(0, 3.25, 0)
-        else
-            if floatPart then
-                floatPart:Destroy()
-                floatPart = nil
-            end
-        end
+local function getDeviceType()
+    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
+        return "Handheld"
+    end
+    return "Desktop"
+end
+
+local function color3ToHex(c)
+    return string.format("#%02x%02x%02x",
+        math.clamp(math.floor(c.R*255),0,255),
+        math.clamp(math.floor(c.G*255),0,255),
+        math.clamp(math.floor(c.B*255),0,255)
+    )
+end
+
+local function buildPlayerDesc(anon, themeName)
+    local dot = ' <font color="'..color3ToHex(getThemeAccent(themeName or config.theme))..'">◆</font> '
+    if anon then
+        local a = "<b><i>Anonymous</i></b>"
+        return
+            dot.."Display Name : "..a..
+            "\n"..dot.."Account Age  : "..a..
+            "\n"..dot.."Executor     : "..a..
+            "\n"..dot.."Device       : "..a..
+            "\n"..dot.."Exec Points  : "..a..
+            "\n"..dot.."Role         : "..a
+    end
+    local pts = config.execPoints or 1
+    return
+        dot.."Display Name : <b>"..LocalPlayer.DisplayName.."</b>"..
+        "\n"..dot.."Account Age  : <b>"..LocalPlayer.AccountAge.." days</b>"..
+        "\n"..dot.."Executor     : <b>"..getExecutorName().."</b>"..
+        "\n"..dot.."Device       : <b>"..getDeviceType().."</b>"..
+        "\n"..dot.."Exec Points  : <b>"..pts.."  ("..getExecRole(pts)..")</b>"..
+        "\n"..dot.."Role         : <b>"..getPlayerRole().."</b>"
+end
+
+local gameName = game.Name
+task.spawn(function()
+    local ok, info = pcall(function()
+        return MarketplaceService:GetProductInfo(game.PlaceId)
     end)
-
-    UserInputService.InputBegan:Connect(function(input, processed)
-        if processed then return end
-        if input.KeyCode == Enum.KeyCode.Space and config.infJump then
-            local character = LocalPlayer.Character
-            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-            if humanoid and rootPart then
-                rootPart.Velocity = Vector3.new(rootPart.Velocity.X, config.jumpPower, rootPart.Velocity.Z)
-            end
-        end
-    end)
-
-    local Window = WindUI:CreateWindow({
-        Title        = "Diablo Script Universal",
-        Icon         = "rbxassetid://909097323",
-        Author       = "By Admin Zhoihr",
-        Folder       = configFolder,
-        Size         = UDim2.fromOffset(580, 440),
-        Transparent  = false,
-        NewElements  = true,
-        Resizable    = true,
-        User = {
-            Enabled   = true,
-            Anonymous = false,
-        },
-        Topbar = {
-            ButtonsType = "Mac",
-        }
-    })
-
-    local TabAim     = Window:Tab({ Title = "Menu 1 aim", Icon = "crosshair" })
-    local TabXexx    = Window:Tab({ Title = "Menu 2 xexx", Icon = "zap" })
-    local TabConfig  = Window:Tab({ Title = "Config", Icon = "database" })
-
-    TabAim:Section({ Title = "Aim Bot Engine" })
-    TabAim:Toggle({
-        Title = "Circle Aim Bot",
-        Value = config.aimbotEnabled,
-        Callback = function(val)
-            config.aimbotEnabled = val
-            FOVCircle.Visible = val
-            saveConfig(config)
-        end
-    })
-    TabAim:Slider({
-        Title = "Setting Area Radius (FOV)",
-        Min = 30, Max = 800,
-        Value = config.fovRadius,
-        Callback = function(val)
-            config.fovRadius = val
-            saveConfig(config)
-        end
-    })
-    TabAim:Section({ Title = "Position Utilities" })
-    TabAim:Toggle({
-        Title = "Floating System Below",
-        Value = config.floatingBlock,
-        Callback = function(val)
-            config.floatingBlock = val
-            saveConfig(config)
-        end
-    })
-    TabAim:Toggle({
-        Title = "Infinite Jump",
-        Value = config.infJump,
-        Callback = function(val)
-            config.infJump = val
-            saveConfig(config)
-        end
-    })
-
-    TabXexx:Section({ Title = "Physical Attributes Modification" })
-    TabXexx:Slider({
-        Title = "Speed Walk Control",
-        Min = 1, Max = 1000,
-        Value = config.walkSpeed,
-        Callback = function(val)
-            config.walkSpeed = val
-            saveConfig(config)
-        end
-    })
-    TabXexx:Slider({
-        Title = "Jump Power Multiplier",
-        Min = 1, Max = 1000,
-        Value = config.jumpPower,
-        Callback = function(val)
-            config.jumpPower = val
-            saveConfig(config)
-        end
-    })
-    TabXexx:Slider({
-        Title = "Spin Character Velocity",
-        Min = 0, Max = 1000,
-        Value = config.spinSpeed,
-        Callback = function(val)
-            config.spinSpeed = val
-            saveConfig(config)
-        end
-    })
-    TabXexx:Section({ Title = "Combat Acceleration Tools" })
-    TabXexx:Toggle({
-        Title = "Auto Clicker Loop",
-        Value = config.autoClick,
-        Callback = function(val)
-            config.autoClick = val
-            saveConfig(config)
-        end
-    })
-    TabXexx:Slider({
-        Title = "Auto Click Spam Speed Rate",
-        Min = 1, Max = 3,
-        Value = config.clickDelay,
-        Callback = function(val)
-            config.clickDelay = val
-            saveConfig(config)
-        end
-    })
-    TabXexx:Toggle({
-        Title = "Fast Attack Mode (No Cooldown Tools)",
-        Value = config.fastAttack,
-        Callback = function(val)
-            config.fastAttack = val
-            saveConfig(config)
-        end
-    })
-
-    local SodiumConfig = Window.ConfigManager:Config("DiabloHubConfig")
-    TabConfig:Section({ Title = "Profile Visual Configurations" })
-    TabConfig:Dropdown({
-        Title = "Interface Core Theme",
-        Multi = false,
-        Options = {"Dark", "Light", "Midnight", "Indigo", "Crimson"},
-        Default = config.theme,
-        Callback = function(selectedTheme)
-            config.theme = selectedTheme
-            saveConfig(config)
-        end
-    })
-
-    WindUI:Notify({
-        Title = "Diablo Universal Initialized",
-        Content = "Successfully operational under WindUI framework.",
-        Icon = "check-circle",
-        Duration = 4
-    })
-end
-
-----------------------------------------------------
--- CHECKING KEY AUTHENTICATION
-----------------------------------------------------
-if hasValidKeySaved() then
-    LoadMainScript()
-else
-    local KeyWindow = WindUI:CreateWindow({
-        Title        = "Diablo Script | Key System",
-        Icon         = "rbxassetid://909097323",
-        Author       = "Verification Required",
-        Folder       = configFolder,
-        Size         = UDim2.fromOffset(400, 240),
-        Transparent  = false,
-        NewElements  = true,
-        Resizable    = false,
-        User         = { Enabled = false },
-        Topbar       = { ButtonsType = "Mac" }
-    })
-
-    local TabKey = KeyWindow:Tab({ Title = "Verification", Icon = "key" })
-    TabKey:Section({ Title = "Enter Authorization Key" })
-
-    local currentInputKey = ""
-
-    TabKey:Input({
-        Title = "Input Key",
-        Placeholder = "Enter script key here...",
-        Callback = function(text)
-            currentInputKey = text
-        end
-    })
-
-    TabKey:Button({
-        Title = "Check Key",
-        Callback = function()
-            if currentInputKey == "no key" then
-                WindUI:Notify({
-                    Title = "Access Granted",
-                    Content = "Correct Key! Loading script layout...",
-                    Icon = "check-circle",
-                    Duration = 3
-                })
-                saveValidKey()
-                task.wait(1)
-                KeyWindow:Destroy()
-                LoadMainScript()
-            else
-                WindUI:Notify({
-                    Title = "Access Denied",
-                    Content = "Invalid key entered. Please try again.",
-                    Icon = "alert-triangle",
-                    Duration = 3
-                })
-            end
-        end
-    })
-end
-
+    if ok and info and info.Name then gameName = info.Name end
 end)
+
+----------------------------------------------------
+-- THUMBNAIL CACHE
+----------------------------------------------------
+local cachedHeadshot    = nil
+local cachedDevHeadshot = nil
+
+task.spawn(function()
+    local ok, hs = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size420x420
+        )
+    end)
+    if ok and hs then cachedHeadshot = hs end
+end)
+
+local function getHeadshot()
+    if cachedHeadshot then return cachedHeadshot end
+    local ok, hs = pcall(function()
+        return Players:GetUserThumbnailAsync(
+            LocalPlayer.UserId,
+            Enum.ThumbnailType.HeadShot,
+            Enum.ThumbnailSize.Size420x420
+        )
+    end)
+    if ok and hs then cachedHeadshot = hs end
+    return cachedHeadshot
+end
+
+----------------------------------------------------
+-- HELPERS
+----------------------------------------------------
+local function resolveAsset(id)
+    if id == nil or id == "" then return nil end
+    local s = tostring(id):gsub("%s+",""):gsub("rbxassetid://","")
+    if s == "" then return nil end
+    return "rbxassetid://"..s
+end
+
+local _cachedUIF = nil
+local _cachedNF  = nil
+
+local function getUserIconFrame()
+    if _cachedUIF and _cachedUIF.Parent then return _cachedUIF end
+    _cachedUIF, _cachedNF = nil, nil
+    local ok, result = pcall(function()
+        local mf = Window.UIElements.Main.Main
+        for _, child in ipairs(mf:GetChildren()) do
+            if child:IsA("TextButton") then
+                for _, inner in ipairs(child:GetChildren()) do
+                    if inner:IsA("ImageLabel") and inner.Name == "UserIcon" then
+                        return inner
+                    end
+                end
+            end
+        end
+        return nil
+    end)
+    if ok and result then
+        _cachedUIF = result
+        _cachedNF  = result:FindFirstChildOfClass("Frame")
+    end
+    return _cachedUIF
+end
+
+local function getNameFrame()
+    if _cachedNF and _cachedNF.Parent then return _cachedNF end
+    local uif = getUserIconFrame()
+    if uif then _cachedNF = uif:FindFirstChildOfClass("Frame") end
+    return _cachedNF
+end
+
+local function applyCustomProfile()
+    if config.anonymous then return end
+    local uif = getUserIconFrame()
+    if not uif then return end
+    for _, child in ipairs(uif:GetChildren()) do
+        if child:IsA("ImageLabel") and child.Name ~= "Outline" then
+            if config.customPfp ~= "" then
+                child.Image = "rbxassetid://"..config.customPfp
+            else
+                local hs = getHeadshot()
+                if hs then child.Image = hs end
+            end
+            break
+        end
+    end
+    local nf = getNameFrame()
+    if nf then
+        local d = nf:FindFirstChild("DisplayName")
+        local u = nf:FindFirstChild("UserName")
+        if d then d.Text = config.customName ~= "" and config.customName or LocalPlayer.DisplayName end
+        if u then u.Text = config.customSubName ~= "" and config.customSubName or LocalPlayer.Name end
+    end
+end
+
+----------------------------------------------------
+-- WINDOW SIZE
+----------------------------------------------------
+local windowSize, minSize, maxSize
+if isMobile then
+    windowSize = UDim2.fromOffset(420, 320)
+    minSize    = Vector2.new(600, 300)
+    maxSize    = Vector2.new(650, 400)
+else
+    windowSize = UDim2.fromOffset(580, 460)
+    minSize    = Vector2.new(600, 350)
+    maxSize    = Vector2.new(850, 560)
+end
+
+----------------------------------------------------
+-- CREATE WINDOW
+----------------------------------------------------
+local windowParams = {
+    Title        = "Sodium <font color='#0089EB'>\u{E000}</font>",
+    Icon         = resolveAsset(config.logo) or "rbxassetid://9090973238",
+    Author       = "By RaffleW_Dev",
+    Folder       = "SodiumHub",
+    Size         = windowSize,
+    MinSize      = minSize,
+    MaxSize      = maxSize,
+    Transparent  = false,
+    NewElements  = true,
+    Resizable    = true,
+    SideBarWidth = 200,
+    HideSearchBar    = false,
+    ScrollBarEnabled = true,
+    User = {
+        Enabled   = true,
+        Anonymous = config.anonymous,
+        Callback  = function() end,
+    },
+    Topbar = {
+        Height      = 44,
+        ButtonsType = config.buttonsType or "Mac",
+    },
+}
+
+local bgAsset = resolveAsset(config.background)
+if bgAsset then windowParams.Background = bgAsset end
+
+local Window = WindUI:CreateWindow(windowParams)
+local SodiumConfig = Window.ConfigManager:Config("SodiumHubConfig")
+
+task.spawn(function()
+    task.wait(0.3)
+    pcall(applyCustomProfile)
+end)
+
+----------------------------------------------------
+-- NOTIFY SOUND
+----------------------------------------------------
+local NotifySound = Instance.new("Sound")
+NotifySound.SoundId            = "rbxassetid://" .. (config.selectedSound or "107004225739474")
+NotifySound.Volume             = 0
+NotifySound.RollOffMaxDistance = 0
+NotifySound.Parent             = SoundService
+
+local startupComplete = false
+
+local function notify(title, content, icon, duration)
+    if not startupComplete then return end
+    pcall(function() NotifySound:Play() end)
+    WindUI:Notify({
+        Title=title, Content=content,
+        Icon=icon or "info", Duration=duration or 3,
+    })
+end
+
+----------------------------------------------------
+-- TABS & COMPLETION
+----------------------------------------------------
+local TabInfo = Window:Tab({
+    Title="Information", Desc="Script information & credits",
+    Icon="info", IconColor=getTabIconColor(config.theme),
+    IconShape="Circle", IconThemed=false,
+    Locked=false, ShowTabTitle=true, Border=true,
+})
+
+local TabSettings = Window:Tab({
+    Title="Settings", Desc="Script configuration",
+    Icon="settings-2", IconColor=getTabIconColor(config.theme),
+    IconShape="Circle", IconThemed=false,
+    Locked=false, ShowTabTitle=true, Border=true,
+})
+
+local TabConfig = Window:Tab({
+    Title="Config", Desc="Save and load configurations",
+    Icon="database", IconColor=getTabIconColor(config.theme),
+    IconShape="Circle", IconThemed=false,
+    Locked=false, ShowTabTitle=true, Border=true,
+})
+
+local function syncTabIconColors(themeName)
+    local acc = getTabIconColor(themeName)
+    pcall(function()
+        for _, tab in ipairs({ TabInfo, TabSettings, TabConfig }) do
+            local icon = tab.UIElements and tab.UIElements.Icon
+            if icon and icon.ImageLabel then
+                icon.ImageLabel.ImageColor3 = acc
+            end
+        end
+    end)
+end
+
+-- Initialization Content Example
+TabInfo:Section({ Title = "Welcome to Sodium" })
+TabInfo:Paragraph({ Title = "User Logs", Desc = buildPlayerDesc(config.anonymous, config.theme) })
+
+startupComplete = true
+syncTabIconColors(config.theme)
