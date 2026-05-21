@@ -141,467 +141,302 @@ fadeStatus:Play()
 fadeBg.Completed:Connect(function()
 	screenGui:Destroy()
 end)
-----------------------------------------------------
--- WINDUI LOADER
-----------------------------------------------------
-local _version = "1.6.63"
-local WindUI
+-- [[ MONUX NUST HUB - DIABLO SCRIPT (FIXED BACKGROUND & SOLID BUTTONS) ]]
+local Player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
 
-do
-    local maxTries = 3
-    for i = 1, maxTries do
-        local ok, result = pcall(function()
-            local src = game:HttpGet(
-                "https://github.com/Footagesus/WindUI/releases/download/"
-                .. _version .. "/main.lua"
-            )
-            if #src < 1000 then error("Incomplete download") end
-            return loadstring(src)()
-        end)
-        if ok and result then WindUI = result break end
-        warn("[Sodium] WindUI attempt " .. i .. " failed: " .. tostring(result))
-        if i < maxTries then task.wait(2) end
-    end
-    if not WindUI then error("[Sodium] Failed to load WindUI") end
+-- 1. Setup UI Dasar
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DiabloHubScript"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- 2. Frame Utama
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 240, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 5, 5)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true -- Agar tombol tersembunyi rapi saat UI dikecilkan
+MainFrame.Parent = ScreenGui
+
+-- HANYA LATAR BELAKANG YANG MENGGUNAKAN ICON INI
+local BackgroundImage = Instance.new("ImageLabel")
+BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+BackgroundImage.BackgroundTransparency = 1
+BackgroundImage.Image = "rbxassetid://9090973238"
+BackgroundImage.ScaleType = Enum.ScaleType.Crop
+BackgroundImage.ImageTransparency = 0.3 -- Kecerahan gambar latar belakang
+BackgroundImage.ZIndex = 1
+BackgroundImage.Parent = MainFrame
+
+local UICorner_Main = Instance.new("UICorner")
+UICorner_Main.CornerRadius = UDim.new(0, 10)
+UICorner_Main.Parent = MainFrame
+
+-- Border Glow Merah Menyala di Keliling UI
+local UIStroke_Main = Instance.new("UIStroke")
+UIStroke_Main.Color = Color3.fromRGB(180, 0, 0)
+UIStroke_Main.Thickness = 1.8
+UIStroke_Main.Transparency = 0.4
+UIStroke_Main.Parent = MainFrame
+
+-- 3. Judul Atas
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.7, 0, 0, 40)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.Text = "⚡ DIABLO SCRIPT"
+Title.TextColor3 = Color3.fromRGB(255, 40, 40)
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 2
+Title.Parent = MainFrame
+
+----------------------------------------------------
+-- SYSTEM UTILITY, ANIMASI & MINIMIZE
+----------------------------------------------------
+local fastInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local isMinimized = false
+
+-- Tombol Perkecil / Minimize (_)
+local MiniBtn = Instance.new("TextButton")
+MiniBtn.Size = UDim2.new(0, 25, 0, 25)
+MiniBtn.Position = UDim2.new(1, -30, 0, 7)
+MiniBtn.BackgroundColor3 = Color3.fromRGB(50, 10, 10)
+MiniBtn.Font = Enum.Font.GothamBold
+MiniBtn.Text = "_"
+MiniBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+MiniBtn.TextSize = 14
+MiniBtn.ZIndex = 3
+MiniBtn.Parent = MainFrame
+
+local UICorner_Mini = Instance.new("UICorner")
+UICorner_Mini.CornerRadius = UDim.new(0, 6)
+UICorner_Mini.Parent = MiniBtn
+
+-- Fungsi Pembuat Tombol Solid (ZIndex ditaruh di atas gambar latar)
+local function buatDesainTombol(btn, teks, yPos)
+    btn.Size = UDim2.new(0.88, 0, 0, 32)
+    btn.Position = UDim2.new(0.06, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 8, 8) -- Warna solid merah-hitam gelap (tidak transparan)
+    btn.BackgroundTransparency = 0 -- Memastikan tombol tetap padat/solid
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = teks
+    btn.TextColor3 = Color3.fromRGB(240, 200, 200)
+    btn.TextSize = 11
+    btn.AutoButtonColor = false
+    btn.ZIndex = 5 -- Di atas BackgroundImage (ZIndex = 1)
+    btn.Parent = MainFrame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(120, 20, 20)
+    stroke.Thickness = 1
+    stroke.Parent = btn
 end
 
-local Players            = game:GetService("Players")
-local RunService         = game:GetService("RunService")
-local StatsService       = game:GetService("Stats")
-local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService    = game:GetService("TeleportService")
-local UserInputService   = game:GetService("UserInputService")
-local SoundService       = game:GetService("SoundService")
-local HttpService        = game:GetService("HttpService")
-local VirtualUser        = game:GetService("VirtualUser")
+local function playTween(obj, goal)
+    TweenService:Create(obj, fastInfo, goal):Play()
+end
 
-local LocalPlayer = Players.LocalPlayer
-local isMobile    = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+----------------------------------------------------
+-- LOGIKA & TRIGGER TOMBOL FITUR
+----------------------------------------------------
 
-local fileSupported = (
-    type(isfolder)   == "function" and
-    type(isfile)     == "function" and
-    type(makefolder) == "function" and
-    type(readfile)   == "function" and
-    type(writefile)  == "function"
-)
+-- [TOMBOL 1: DIABLO AUTO HIT]
+local Btn1 = Instance.new("TextButton")
+buatDesainTombol(Btn1, "Diablo Auto Hit: OFF", 45)
+local autoHitActive = false
+local hitConnection
 
-local configFolder = "SodiumHub"
-local configFile   = configFolder .. "/config.json"
-
-local defaultConfig = {
-    background     = "",
-    logo           = "9090973238", -- Updated Icon
-    theme          = "Dark",
-    buttonsType    = "Mac",
-    customPfp      = "",
-    customName     = "",
-    customSubName  = "",
-    anonymous      = false,
-    selectedSound  = "107004225739474",
-    customSounds   = {},
-    execPoints     = 0,
-    webhookUrl     = "",
-    webhookEnabled = false,
-    cooldownTime   = 60,
-}
-
-local function loadConfig()
-    if not fileSupported then
-        local f = {} for k,v in pairs(defaultConfig) do f[k]=v end return f
-    end
-    if not isfolder(configFolder) then makefolder(configFolder) end
-    if isfile(configFile) then
-        local ok, data = pcall(function()
-            return HttpService:JSONDecode(readfile(configFile))
+Btn1.MouseButton1Click:Connect(function()
+    autoHitActive = not autoHitActive
+    if autoHitActive then
+        playTween(Btn1, {BackgroundColor3 = Color3.fromRGB(180, 0, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn1.Text = "Diablo Auto Hit: ON"
+        hitConnection = RunService.RenderStepped:Connect(function()
+            local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
+            if tool and tool:FindFirstChild("Activate") then tool:Activate() end
         end)
-        if ok and data then
-            for k,v in pairs(defaultConfig) do
-                if data[k] == nil then data[k] = v end
-            end
-            return data
+    else
+        playTween(Btn1, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn1.Text = "Diablo Auto Hit: OFF"
+        if hitConnection then hitConnection:Disconnect() end
+    end
+end)
+
+-- [TOMBOL 2: JUMPPOWER 250]
+local Btn2 = Instance.new("TextButton")
+buatDesainTombol(Btn2, "Demonic Jump (250): OFF", 85)
+local jpActive = false
+
+Btn2.MouseButton1Click:Connect(function()
+    jpActive = not jpActive
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.UseJumpPower = true
+        if jpActive then
+            playTween(Btn2, {BackgroundColor3 = Color3.fromRGB(200, 60, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+            Btn2.Text = "Demonic Jump: ACTIVE"
+            hum.JumpPower = 250
+        else
+            playTween(Btn2, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+            Btn2.Text = "Demonic Jump (250): OFF"
+            hum.JumpPower = 50
         end
     end
-    local fresh = {} for k,v in pairs(defaultConfig) do fresh[k]=v end return fresh
-end
-
-local function saveConfig(cfg)
-    if not fileSupported then return end
-    if not isfolder(configFolder) then makefolder(configFolder) end
-    writefile(configFile, HttpService:JSONEncode(cfg))
-end
-
-local config = loadConfig()
-config.execPoints = (config.execPoints or 0) + 1
-saveConfig(config)
-
-local WebhookURL     = config.webhookUrl     or ""
-local WebhookEnabled = config.webhookEnabled or false
-local CooldownTime   = config.cooldownTime   or 60
-
-----------------------------------------------------
--- THEME GRADIENT MAP
-----------------------------------------------------
-local ThemeGradients = {
-    Dark             = { a="#888888", b="#333333", c="#0a0a0a" },
-    Light            = { a="#ffffff", b="#cccccc", c="#aaaaaa" },
-    Rose             = { a="#ff8fa3", b="#ff4d6d", c="#000000" },
-    Plant            = { a="#95d5b2", b="#52b788", c="#000000" },
-    Red              = { a="#ff6b6b", b="#e63946", c="#000000" },
-    Indigo           = { a="#a5b4fc", b="#6366f1", c="#000000" },
-    Sky              = { a="#7dd3fc", b="#38bdf8", c="#000000" },
-    Violet           = { a="#c4b5fd", b="#8b5cf6", c="#000000" },
-    Amber            = { a="#fcd34d", b="#f59e0b", c="#000000" },
-    Emerald          = { a="#6ee7b7", b="#10b981", c="#000000" },
-    Midnight         = { a="#334155", b="#1e293b", c="#0f172a" },
-    Crimson          = { a="#fb7185", b="#e11d48", c="#000000" },
-}
-
-local function getThemeAccent(themeName)
-    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
-    return Color3.fromHex(g.b)
-end
-
-local darkShapeThemes = {
-    Rose=true, Plant=true, Red=true,   Indigo=true,
-    Sky=true,  Violet=true, Amber=true, Emerald=true,
-    Crimson=true,
-}
-
-local function getTabIconColor(themeName)
-    if darkShapeThemes[themeName] then
-        return Color3.fromHex("#0a0a0a") 
-    end
-    return getThemeAccent(themeName)
-end
-
-local function makeThemeGradient(themeName)
-    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
-    return WindUI:Gradient({
-        [0]   = { Color=Color3.fromHex(g.a), Transparency=0 },
-        [50]  = { Color=Color3.fromHex(g.b), Transparency=0 },
-        [100] = { Color=Color3.fromHex(g.c), Transparency=0 },
-    }, { Rotation=45 })
-end
-
-local function makeOpenButtonColor(themeName)
-    local g = ThemeGradients[themeName] or ThemeGradients["Dark"]
-    return ColorSequence.new({
-        ColorSequenceKeypoint.new(0,   Color3.fromHex(g.a)),
-        ColorSequenceKeypoint.new(0.5, Color3.fromHex(g.b)),
-        ColorSequenceKeypoint.new(1,   Color3.fromHex(g.c)),
-    })
-end
-
-----------------------------------------------------
--- THEME IMAGE MAP
-----------------------------------------------------
-local ThemeImages = {
-    Dark             = { img="136481007766661" },
-    Amber            = { img="95128033219028"  },
-    Light            = { img="103289004814551" },
-    Rose             = { img="128965390137681" },
-    Red              = { img="128965390137681" },
-    Crimson          = { img="128965390137681" },
-    Sky              = { img="115965625673091" },
-    Midnight         = { img="115965625673091" },
-    Indigo           = { img="100706133773186" },
-    Violet           = { img="100706133773186" },
-    Emerald          = { img="72882008403843"  },
-    Plant            = { img="72882008403843"  },
-}
-
-local function getThemeImgs(themeName)
-    return ThemeImages[themeName] or ThemeImages["Dark"]
-end
-
-----------------------------------------------------
--- PLAYER INFO HELPERS
-----------------------------------------------------
-local function getExecRole(pts)
-    if pts <= 10  then return "Explore Time"   end
-    if pts <= 50  then return "Sodium Enjoyer" end
-    return "Sodium Lover"
-end
-
-local devList = { "lost_metamofuruze" }
-
-local function getPlayerRole()
-    local name = LocalPlayer.Name:lower()
-    for _, dev in ipairs(devList) do
-        if name == dev:lower() then return "🛠 Dev" end
-    end
-    return "★ User"
-end
-
-local function getExecutorName()
-    if type(identifyexecutor) == "function" then
-        local ok, n = pcall(identifyexecutor)
-        if ok and n then return tostring(n) end
-    end
-    if type(getexecutorname) == "function" then
-        local ok, n = pcall(getexecutorname)
-        if ok and n then return tostring(n) end
-    end
-    if syn         then return "Synapse X" end
-    if KRNL_LOADED then return "Krnl"      end
-    return "Unknown"
-end
-
-local function getDeviceType()
-    if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
-        return "Handheld"
-    end
-    return "Desktop"
-end
-
-local function color3ToHex(c)
-    return string.format("#%02x%02x%02x",
-        math.clamp(math.floor(c.R*255),0,255),
-        math.clamp(math.floor(c.G*255),0,255),
-        math.clamp(math.floor(c.B*255),0,255)
-    )
-end
-
-local function buildPlayerDesc(anon, themeName)
-    local dot = ' <font color="'..color3ToHex(getThemeAccent(themeName or config.theme))..'">◆</font> '
-    if anon then
-        local a = "<b><i>Anonymous</i></b>"
-        return
-            dot.."Display Name : "..a..
-            "\n"..dot.."Account Age  : "..a..
-            "\n"..dot.."Executor     : "..a..
-            "\n"..dot.."Device       : "..a..
-            "\n"..dot.."Exec Points  : "..a..
-            "\n"..dot.."Role         : "..a
-    end
-    local pts = config.execPoints or 1
-    return
-        dot.."Display Name : <b>"..LocalPlayer.DisplayName.."</b>"..
-        "\n"..dot.."Account Age  : <b>"..LocalPlayer.AccountAge.." days</b>"..
-        "\n"..dot.."Executor     : <b>"..getExecutorName().."</b>"..
-        "\n"..dot.."Device       : <b>"..getDeviceType().."</b>"..
-        "\n"..dot.."Exec Points  : <b>"..pts.."  ("..getExecRole(pts)..")</b>"..
-        "\n"..dot.."Role         : <b>"..getPlayerRole().."</b>"
-end
-
-local gameName = game.Name
-task.spawn(function()
-    local ok, info = pcall(function()
-        return MarketplaceService:GetProductInfo(game.PlaceId)
-    end)
-    if ok and info and info.Name then gameName = info.Name end
 end)
 
-----------------------------------------------------
--- THUMBNAIL CACHE
-----------------------------------------------------
-local cachedHeadshot    = nil
-local cachedDevHeadshot = nil
+-- [TOMBOL 3: WALK SPEED 100]
+local Btn3 = Instance.new("TextButton")
+buatDesainTombol(Btn3, "Hell Speed (100): OFF", 125)
+local wsActive = false
+local wsLoop
 
-task.spawn(function()
-    local ok, hs = pcall(function()
-        return Players:GetUserThumbnailAsync(
-            LocalPlayer.UserId,
-            Enum.ThumbnailType.HeadShot,
-            Enum.ThumbnailSize.Size420x420
-        )
-    end)
-    if ok and hs then cachedHeadshot = hs end
+Btn3.MouseButton1Click:Connect(function()
+    wsActive = not wsActive
+    if wsActive then
+        playTween(Btn3, {BackgroundColor3 = Color3.fromRGB(200, 60, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn3.Text = "Hell Speed: ACTIVE"
+        wsLoop = RunService.RenderStepped:Connect(function()
+            local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = 100 end
+        end)
+    else
+        playTween(Btn3, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn3.Text = "Hell Speed (100): OFF"
+        if wsLoop then wsLoop:Disconnect() end
+        local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end
 end)
 
-local function getHeadshot()
-    if cachedHeadshot then return cachedHeadshot end
-    local ok, hs = pcall(function()
-        return Players:GetUserThumbnailAsync(
-            LocalPlayer.UserId,
-            Enum.ThumbnailType.HeadShot,
-            Enum.ThumbnailSize.Size420x420
-        )
-    end)
-    if ok and hs then cachedHeadshot = hs end
-    return cachedHeadshot
-end
+-- [TOMBOL 4: LOCK AURA]
+local Btn4 = Instance.new("TextButton")
+buatDesainTombol(Btn4, "Blood Lock Aura: OFF", 165)
+local auraActive = false
+local auraVisual
 
-----------------------------------------------------
--- HELPERS
-----------------------------------------------------
-local function resolveAsset(id)
-    if id == nil or id == "" then return nil end
-    local s = tostring(id):gsub("%s+",""):gsub("rbxassetid://","")
-    if s == "" then return nil end
-    return "rbxassetid://"..s
-end
+Btn4.MouseButton1Click:Connect(function()
+    auraActive = not auraActive
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if auraActive and hrp then
+        playTween(Btn4, {BackgroundColor3 = Color3.fromRGB(120, 0, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn4.Text = "Blood Lock Aura: ON"
+        auraVisual = Instance.new("SelectionBox")
+        auraVisual.Name = "DiabloAuraVisual"
+        auraVisual.Color3 = Color3.fromRGB(255, 0, 0)
+        auraVisual.LineThickness = 0.06
+        auraVisual.Adornee = Player.Character
+        auraVisual.Parent = Player.Character
+    else
+        playTween(Btn4, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn4.Text = "Blood Lock Aura: OFF"
+        if Player.Character and Player.Character:FindFirstChild("DiabloAuraVisual") then
+            Player.Character.DiabloAuraVisual:Destroy()
+        end
+    end
+end)
 
-local _cachedUIF = nil
-local _cachedNF  = nil
+-- [TOMBOL 5: FLOATING PLATFORM]
+local Btn5 = Instance.new("TextButton")
+buatDesainTombol(Btn5, "Abyss Float: OFF", 205)
+local floatActive = false
+local floatPart
+local floatLoop
 
-local function getUserIconFrame()
-    if _cachedUIF and _cachedUIF.Parent then return _cachedUIF end
-    _cachedUIF, _cachedNF = nil, nil
-    local ok, result = pcall(function()
-        local mf = Window.UIElements.Main.Main
-        for _, child in ipairs(mf:GetChildren()) do
-            if child:IsA("TextButton") then
-                for _, inner in ipairs(child:GetChildren()) do
-                    if inner:IsA("ImageLabel") and inner.Name == "UserIcon" then
-                        return inner
-                    end
+Btn5.MouseButton1Click:Connect(function()
+    floatActive = not floatActive
+    if floatActive then
+        playTween(Btn5, {BackgroundColor3 = Color3.fromRGB(90, 0, 130), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn5.Text = "Abyss Float: ON"
+        floatPart = Instance.new("Part")
+        floatPart.Size = Vector3.new(6.5, 0.5, 6.5)
+        floatPart.Transparency = 0.4
+        floatPart.Color = Color3.fromRGB(150, 0, 0)
+        floatPart.Material = Enum.Material.Neon
+        floatPart.Anchored = true
+        floatPart.Parent = workspace
+        floatLoop = RunService.Heartbeat:Connect(function()
+            local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp and floatPart then floatPart.CFrame = hrp.CFrame * CFrame.new(0, -3.25, 0) end
+        end)
+    else
+        playTween(Btn5, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn5.Text = "Abyss Float: OFF"
+        if floatLoop then floatLoop:Disconnect() end
+        if floatPart then floatPart:Destroy() end
+    end
+end)
+
+-- [TOMBOL 6: BRING ALL NPC]
+local Btn6 = Instance.new("TextButton")
+buatDesainTombol(Btn6, "Sacrifice All NPCs (Bring)", 245)
+
+Btn6.MouseButton1Click:Connect(function()
+    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        playTween(Btn6, {BackgroundColor3 = Color3.fromRGB(220, 0, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn6.Text = "NPCs Teleported!"
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("Humanoid") and obj.Parent ~= Player.Character then
+                local npcRoot = obj.Parent:FindFirstChild("HumanoidRootPart")
+                if npcRoot then
+                    npcRoot.CFrame = hrp.CFrame * CFrame.new(0, 0, -4)
+                    npcRoot.Anchored = true
                 end
             end
         end
-        return nil
-    end)
-    if ok and result then
-        _cachedUIF = result
-        _cachedNF  = result:FindFirstChildOfClass("Frame")
+        task.wait(1.5)
+        playTween(Btn6, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn6.Text = "Sacrifice All NPCs (Bring)"
     end
-    return _cachedUIF
-end
+end)
 
-local function getNameFrame()
-    if _cachedNF and _cachedNF.Parent then return _cachedNF end
-    local uif = getUserIconFrame()
-    if uif then _cachedNF = uif:FindFirstChildOfClass("Frame") end
-    return _cachedNF
-end
+-- [TOMBOL CLOSE INTERFACE]
+local CloseBtn = Instance.new("TextButton")
+buatDesainTombol(CloseBtn, "Banish Diablo Menu", 305)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(50, 10, 10)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 140, 140)
 
-local function applyCustomProfile()
-    if config.anonymous then return end
-    local uif = getUserIconFrame()
-    if not uif then return end
-    for _, child in ipairs(uif:GetChildren()) do
-        if child:IsA("ImageLabel") and child.Name ~= "Outline" then
-            if config.customPfp ~= "" then
-                child.Image = "rbxassetid://"..config.customPfp
-            else
-                local hs = getHeadshot()
-                if hs then child.Image = hs end
-            end
-            break
-        end
+CloseBtn.MouseButton1Click:Connect(function()
+    if hitConnection then hitConnection:Disconnect() end
+    if wsLoop then wsLoop:Disconnect() end
+    if floatLoop then floatLoop:Disconnect() end
+    if floatPart then floatPart:Destroy() end
+    if Player.Character and Player.Character:FindFirstChild("DiabloAuraVisual") then
+        Player.Character.DiabloAuraVisual:Destroy()
     end
-    local nf = getNameFrame()
-    if nf then
-        local d = nf:FindFirstChild("DisplayName")
-        local u = nf:FindFirstChild("UserName")
-        if d then d.Text = config.customName ~= "" and config.customName or LocalPlayer.DisplayName end
-        if u then u.Text = config.customSubName ~= "" and config.customSubName or LocalPlayer.Name end
-    end
-end
-
-----------------------------------------------------
--- WINDOW SIZE
-----------------------------------------------------
-local windowSize, minSize, maxSize
-if isMobile then
-    windowSize = UDim2.fromOffset(420, 320)
-    minSize    = Vector2.new(600, 300)
-    maxSize    = Vector2.new(650, 400)
-else
-    windowSize = UDim2.fromOffset(580, 460)
-    minSize    = Vector2.new(600, 350)
-    maxSize    = Vector2.new(850, 560)
-end
-
-----------------------------------------------------
--- CREATE WINDOW
-----------------------------------------------------
-local windowParams = {
-    Title        = "Sodium <font color='#0089EB'>\u{E000}</font>",
-    Icon         = resolveAsset(config.logo) or "rbxassetid://9090973238",
-    Author       = "By RaffleW_Dev",
-    Folder       = "SodiumHub",
-    Size         = windowSize,
-    MinSize      = minSize,
-    MaxSize      = maxSize,
-    Transparent  = false,
-    NewElements  = true,
-    Resizable    = true,
-    SideBarWidth = 200,
-    HideSearchBar    = false,
-    ScrollBarEnabled = true,
-    User = {
-        Enabled   = true,
-        Anonymous = config.anonymous,
-        Callback  = function() end,
-    },
-    Topbar = {
-        Height      = 44,
-        ButtonsType = config.buttonsType or "Mac",
-    },
-}
-
-local bgAsset = resolveAsset(config.background)
-if bgAsset then windowParams.Background = bgAsset end
-
-local Window = WindUI:CreateWindow(windowParams)
-local SodiumConfig = Window.ConfigManager:Config("SodiumHubConfig")
-
-task.spawn(function()
-    task.wait(0.3)
-    pcall(applyCustomProfile)
+    playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 0), BackgroundTransparency = 1})
+    playTween(Title, {TextTransparency = 1})
+    task.wait(0.2)
+    ScreenGui:Destroy()
 end)
 
 ----------------------------------------------------
--- NOTIFY SOUND
+-- INTERAKSI TOMBOL MINIMIZE SINKRONISASI
 ----------------------------------------------------
-local NotifySound = Instance.new("Sound")
-NotifySound.SoundId            = "rbxassetid://" .. (config.selectedSound or "107004225739474")
-NotifySound.Volume             = 0
-NotifySound.RollOffMaxDistance = 0
-NotifySound.Parent             = SoundService
-
-local startupComplete = false
-
-local function notify(title, content, icon, duration)
-    if not startupComplete then return end
-    pcall(function() NotifySound:Play() end)
-    WindUI:Notify({
-        Title=title, Content=content,
-        Icon=icon or "info", Duration=duration or 3,
-    })
-end
-
-----------------------------------------------------
--- TABS & COMPLETION
-----------------------------------------------------
-local TabInfo = Window:Tab({
-    Title="Information", Desc="Script information & credits",
-    Icon="info", IconColor=getTabIconColor(config.theme),
-    IconShape="Circle", IconThemed=false,
-    Locked=false, ShowTabTitle=true, Border=true,
-})
-
-local TabSettings = Window:Tab({
-    Title="Settings", Desc="Script configuration",
-    Icon="settings-2", IconColor=getTabIconColor(config.theme),
-    IconShape="Circle", IconThemed=false,
-    Locked=false, ShowTabTitle=true, Border=true,
-})
-
-local TabConfig = Window:Tab({
-    Title="Config", Desc="Save and load configurations",
-    Icon="database", IconColor=getTabIconColor(config.theme),
-    IconShape="Circle", IconThemed=false,
-    Locked=false, ShowTabTitle=true, Border=true,
-})
-
-local function syncTabIconColors(themeName)
-    local acc = getTabIconColor(themeName)
-    pcall(function()
-        for _, tab in ipairs({ TabInfo, TabSettings, TabConfig }) do
-            local icon = tab.UIElements and tab.UIElements.Icon
-            if icon and icon.ImageLabel then
-                icon.ImageLabel.ImageColor3 = acc
-            end
-        end
-    end)
-end
-
--- Initialization Content Example
-TabInfo:Section({ Title = "Welcome to Sodium" })
-TabInfo:Paragraph({ Title = "User Logs", Desc = buildPlayerDesc(config.anonymous, config.theme) })
-
-startupComplete = true
-syncTabIconColors(config.theme)
+MiniBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        MiniBtn.Text = "+"
+        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 40)}) -- Mengecilkan ukuran panel utama
+        Btn1.Visible = false Btn2.Visible = false Btn3.Visible = false 
+        Btn4.Visible = false Btn5.Visible = false Btn6.Visible = false CloseBtn.Visible = false
+    else
+        MiniBtn.Text = "_"
+        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 360)}) -- Mengembalikan panel utama ke ukuran semula
+        task.wait(0.1)
+        Btn1.Visible = true Btn2.Visible = true Btn3.Visible = true 
+        Btn4.Visible = true Btn5.Visible = true Btn6.Visible = true CloseBtn.Visible = true
+    end
+end)
