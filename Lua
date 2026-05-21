@@ -1,0 +1,562 @@
+-- =======================================================
+-- DIABLO SCRIPT BY ZENNS/ZHOIHR - LOADING SCREEN
+-- =======================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
+
+-- 1. Membuat ScreenGui (Inject ke CoreGui agar aman dari reset)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DiabloScriptLoading"
+screenGui.ResetOnSpawn = false
+
+local success, err = pcall(function()
+	screenGui.Parent = CoreGui
+end)
+if not success then
+	screenGui.Parent = player:WaitForChild("PlayerGui")
+end
+
+-- 2. Background Utama (Hitam Elegan Khas Diablo)
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(1, 0, 1, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+mainFrame.BackgroundTransparency = 0.15
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- 3. Icon di Sebelah Kiri Atas (ID: 9090973238)
+local icon = Instance.new("ImageLabel")
+icon.Size = UDim2.new(0, 80, 0, 80)
+icon.Position = UDim2.new(0, 25, 0, 25)
+icon.BackgroundTransparency = 1
+icon.Image = "rbxassetid://9090973238"
+icon.Parent = mainFrame
+
+-- 4. Judul Script (Diablo Script by Zenns/Zhoihr)
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(0, 600, 0, 40)
+titleLabel.Position = UDim2.new(0.5, -300, 0.35, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(255, 50, 50) -- Warna merah gelap khas Diablo
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 28
+titleLabel.Text = "Diablo Script by Zenns/Zhoihr"
+titleLabel.Parent = mainFrame
+
+-- 5. Status Sapaan / Loading
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(0, 500, 0, 30)
+statusLabel.Position = UDim2.new(0.5, -250, 0.43, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 18
+statusLabel.Text = "Checking system files..."
+statusLabel.Parent = mainFrame
+
+-- 6. Background Progress Bar
+local barBackground = Instance.new("Frame")
+barBackground.Size = UDim2.new(0, 300, 0, 12)
+barBackground.Position = UDim2.new(0.5, -150, 0.52, 0)
+barBackground.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+barBackground.BorderSizePixel = 0
+barBackground.Parent = mainFrame
+
+local barCorner = Instance.new("UICorner")
+barCorner.CornerRadius = UDim.new(0, 6)
+barCorner.Parent = barBackground
+
+-- 7. Fill Progress Bar (Merah Diablo)
+local barFill = Instance.new("Frame")
+barFill.Size = UDim2.new(0, 0, 1, 0)
+barFill.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Merah menyala
+barFill.BorderSizePixel = 0
+barFill.Parent = barBackground
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 6)
+fillCorner.Parent = barFill
+
+-- 8. Teks Persentase (%)
+local percentLabel = Instance.new("TextLabel")
+percentLabel.Size = UDim2.new(0, 100, 0, 25)
+percentLabel.Position = UDim2.new(0.5, -50, 0.52, 20)
+percentLabel.BackgroundTransparency = 1
+percentLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+percentLabel.Font = Enum.Font.Gotham
+percentLabel.TextSize = 14
+percentLabel.Text = "0%"
+percentLabel.Parent = mainFrame
+
+--- PROSES HITUNG MUNDUR / LOADING (10 DETIK) ---
+
+local duration = 10
+local startTime = os.clock()
+
+-- Jalankan bar secara mulus
+local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
+local tween = TweenService:Create(barFill, tweenInfo, {Size = UDim2.new(1, 0, 1, 0)})
+tween:Play()
+
+-- Update angka persentase
+while os.clock() - startTime < duration do
+	local elapsed = os.clock() - startTime
+	local percentage = math.floor((elapsed / duration) * 100)
+	if percentage > 100 then percentage = 100 end
+	percentLabel.Text = percentage .. "%"
+	task.wait(0.05)
+end
+
+percentLabel.Text = "100%"
+
+--- SYSTEM SELESAI & MENYAPA ---
+
+-- Mengubah teks menjadi format sapaan yang kamu minta
+statusLabel.Text = "Hello " .. player.Name .. ", enjoy! my script, boring this Script?,join my discord"
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.Font = Enum.Font.GothamMedium
+
+-- Hapus komponen loading bar yang sudah tidak dipakai
+percentLabel:Destroy()
+barBackground:Destroy()
+
+task.wait(2.5) -- Menampilkan sapaan selama 2,5 detik
+
+-- Efek Fade Out sebelum UI ditutup
+local fadeInfo = TweenInfo.new(1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local fadeBg = TweenService:Create(mainFrame, fadeInfo, {BackgroundTransparency = 1})
+local fadeIcon = TweenService:Create(icon, fadeInfo, {ImageTransparency = 1})
+local fadeTitle = TweenService:Create(titleLabel, fadeInfo, {TextTransparency = 1})
+local fadeStatus = TweenService:Create(statusLabel, fadeInfo, {TextTransparency = 1})
+
+fadeBg:Play()
+fadeIcon:Play()
+fadeTitle:Play()
+fadeStatus:Play()
+
+-- Hapus GUI dari game setelah benar-benar tidak terlihat
+fadeBg.Completed:Connect(function()
+	screenGui:Destroy()
+   ----------------------------------------------------
+-- DIABLO SCRIPT UNIVERSAL | WINDUI LOADER + KEY SYSTEM
+----------------------------------------------------
+local _version = "1.6.63"
+local WindUI
+
+do
+    local maxTries = 3
+    for i = 1, maxTries do
+        local ok, result = pcall(function()
+            local src = game:HttpGet(
+                "https://github.com/Footagesus/WindUI/releases/download/"
+                .. _version .. "/main.lua"
+            )
+            if #src < 1000 then error("Incomplete download") end
+            return loadstring(src)()
+        end)
+        if ok and result then WindUI = result break end
+        warn("[Diablo] WindUI attempt " .. i .. " failed: " .. tostring(result))
+        if i < maxTries then task.wait(2) end
+    end
+    if not WindUI then error("[Diablo] Failed to load WindUI") end
+end
+
+local Players            = game:GetService("Players")
+local RunService         = game:GetService("RunService")
+local UserInputService   = game:GetService("UserInputService")
+local TweenService       = game:GetService("TweenService")
+local HttpService        = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera      = workspace.CurrentCamera
+
+local fileSupported = (
+    type(isfolder)   == "function" and
+    type(isfile)     == "function" and
+    type(makefolder) == "function" and
+    type(readfile)   == "function" and
+    type(writefile)  == "function"
+)
+
+local configFolder = "DiabloScript"
+local configFile   = configFolder .. "/config.json"
+local keyAuthFile  = configFolder .. "/key_auth.json"
+
+local defaultConfig = {
+    theme          = "Dark",
+    aimbotEnabled  = false,
+    fovRadius      = 150,
+    infJump        = false,
+    walkSpeed      = 16,
+    jumpPower      = 50,
+    spinSpeed      = 0,
+    autoClick      = false,
+    clickDelay     = 1,
+    fastAttack     = false,
+    floatingBlock  = false
+}
+
+local function loadConfig()
+    if not fileSupported then
+        local f = {} for k,v in pairs(defaultConfig) do f[k]=v end return f
+    end
+    if not isfolder(configFolder) then makefolder(configFolder) end
+    if isfile(configFile) then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(readfile(configFile))
+        end)
+        if ok and data then
+            for k,v in pairs(defaultConfig) do
+                if data[k] == nil then data[k] = v end
+            end
+            return data
+        end
+    end
+    local fresh = {} for k,v in pairs(defaultConfig) do fresh[k]=v end return fresh
+end
+
+local function saveConfig(cfg)
+    if not fileSupported then return end
+    if not isfolder(configFolder) then makefolder(configFolder) end
+    writefile(configFile, HttpService:JSONEncode(cfg))
+end
+
+local config = loadConfig()
+
+local function hasValidKeySaved()
+    if fileSupported and isfile(keyAuthFile) then
+        local ok, data = pcall(function()
+            return HttpService:JSONDecode(readfile(keyAuthFile))
+        end)
+        if ok and data democracy and data.key == "no key" then
+            return true
+        end
+    end
+    return false
+end
+
+local function saveValidKey()
+    if fileSupported then
+        if not isfolder(configFolder) then makefolder(configFolder) end
+        writefile(keyAuthFile, HttpService:JSONEncode({key = "no key"}))
+    end
+end
+
+----------------------------------------------------
+-- MAIN UI LOAD FUNCTION
+----------------------------------------------------
+local function LoadMainScript()
+    -- Visual Circle FOV
+    local FOVCircle = Drawing.new("Circle")
+    FOVCircle.Thickness = 1.5
+    FOVCircle.Filled = false
+    FOVCircle.Color = Color3.fromRGB(255, 0, 0)
+    FOVCircle.Transparency = 0.7
+    FOVCircle.Visible = config.aimbotEnabled
+
+    local function getClosestPlayer()
+        local closestTarget = nil
+        local shortestDistance = config.fovRadius
+
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+                if onScreen then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local distance = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                    if distance < shortestDistance then
+                        closestTarget = player
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+        return closestTarget
+    end
+
+    local clickTimer = 0
+    local spinAngle = 0
+    local floatPart = nil
+
+    RunService.RenderStepped:Connect(function(dt)
+        local character = LocalPlayer.Character
+        if not character then return end
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        
+        FOVCircle.Radius = config.fovRadius
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+        
+        if config.aimbotEnabled then
+            local target = getClosestPlayer()
+            if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+                local targetPos = target.Character.HumanoidRootPart.Position
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, targetPos)
+            end
+        end
+        
+        if humanoid then
+            humanoid.WalkSpeed = config.walkSpeed
+            if humanoid.UseJumpPower then
+                humanoid.JumpPower = config.jumpPower
+            else
+                humanoid.JumpHeight = config.jumpPower / 3.5
+            end
+        end
+        
+        if rootPart and config.spinSpeed > 0 then
+            spinAngle = (spinAngle + config.spinSpeed * dt * 10) % 360
+            rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, math.deg(spinAngle), 0)
+        end
+        
+        if config.autoClick then
+            clickTimer = clickTimer + dt
+            local delayThreshold = 1 / math.clamp(config.clickDelay, 1, 3)
+            if clickTimer >= delayThreshold then
+                clickTimer = 0
+                local tool = character:FindFirstChildOfClass("Tool")
+                if tool then
+                    tool:Activate()
+                end
+            end
+        end
+        
+        if config.fastAttack then
+            local tool = character:FindFirstChildOfClass("Tool")
+            if tool and tool:FindFirstChild("Animation") then
+                for _, state in ipairs(humanoid:GetPlayingAnimationTracks()) do
+                    if state.Animation.AnimationId == tool.Animation.AnimationId then
+                        state:AdjustSpeed(100)
+                    end
+                end
+            end
+        end
+        
+        if config.floatingBlock and rootPart then
+            if not floatPart or not floatPart.Parent then
+                floatPart = Instance.new("Part")
+                floatPart.Size = Vector3.new(6, 0.5, 6)
+                floatPart.Transparency = 0.5
+                floatPart.Color = Color3.fromRGB(130, 20, 180)
+                floatPart.Material = Enum.Material.ForceField
+                floatPart.Anchored = true
+                floatPart.Parent = workspace
+            end
+            floatPart.Position = rootPart.Position - Vector3.new(0, 3.25, 0)
+        else
+            if floatPart then
+                floatPart:Destroy()
+                floatPart = nil
+            end
+        end
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then return end
+        if input.KeyCode == Enum.KeyCode.Space and config.infJump then
+            local character = LocalPlayer.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+            if humanoid and rootPart then
+                rootPart.Velocity = Vector3.new(rootPart.Velocity.X, config.jumpPower, rootPart.Velocity.Z)
+            end
+        end
+    end)
+
+    local Window = WindUI:CreateWindow({
+        Title        = "Diablo Script Universal",
+        Icon         = "rbxassetid://909097323",
+        Author       = "By Admin Zhoihr",
+        Folder       = configFolder,
+        Size         = UDim2.fromOffset(580, 440),
+        Transparent  = false,
+        NewElements  = true,
+        Resizable    = true,
+        User = {
+            Enabled   = true,
+            Anonymous = false,
+        },
+        Topbar = {
+            ButtonsType = "Mac",
+        }
+    })
+
+    local TabAim     = Window:Tab({ Title = "Menu 1 aim", Icon = "crosshair" })
+    local TabXexx    = Window:Tab({ Title = "Menu 2 xexx", Icon = "zap" })
+    local TabConfig  = Window:Tab({ Title = "Config", Icon = "database" })
+
+    TabAim:Section({ Title = "Aim Bot Engine" })
+    TabAim:Toggle({
+        Title = "Circle Aim Bot",
+        Value = config.aimbotEnabled,
+        Callback = function(val)
+            config.aimbotEnabled = val
+            FOVCircle.Visible = val
+            saveConfig(config)
+        end
+    })
+    TabAim:Slider({
+        Title = "Setting Area Radius (FOV)",
+        Min = 30, Max = 800,
+        Value = config.fovRadius,
+        Callback = function(val)
+            config.fovRadius = val
+            saveConfig(config)
+        end
+    })
+    TabAim:Section({ Title = "Position Utilities" })
+    TabAim:Toggle({
+        Title = "Floating System Below",
+        Value = config.floatingBlock,
+        Callback = function(val)
+            config.floatingBlock = val
+            saveConfig(config)
+        end
+    })
+    TabAim:Toggle({
+        Title = "Infinite Jump",
+        Value = config.infJump,
+        Callback = function(val)
+            config.infJump = val
+            saveConfig(config)
+        end
+    })
+
+    TabXexx:Section({ Title = "Physical Attributes Modification" })
+    TabXexx:Slider({
+        Title = "Speed Walk Control",
+        Min = 1, Max = 1000,
+        Value = config.walkSpeed,
+        Callback = function(val)
+            config.walkSpeed = val
+            saveConfig(config)
+        end
+    })
+    TabXexx:Slider({
+        Title = "Jump Power Multiplier",
+        Min = 1, Max = 1000,
+        Value = config.jumpPower,
+        Callback = function(val)
+            config.jumpPower = val
+            saveConfig(config)
+        end
+    })
+    TabXexx:Slider({
+        Title = "Spin Character Velocity",
+        Min = 0, Max = 1000,
+        Value = config.spinSpeed,
+        Callback = function(val)
+            config.spinSpeed = val
+            saveConfig(config)
+        end
+    })
+    TabXexx:Section({ Title = "Combat Acceleration Tools" })
+    TabXexx:Toggle({
+        Title = "Auto Clicker Loop",
+        Value = config.autoClick,
+        Callback = function(val)
+            config.autoClick = val
+            saveConfig(config)
+        end
+    })
+    TabXexx:Slider({
+        Title = "Auto Click Spam Speed Rate",
+        Min = 1, Max = 3,
+        Value = config.clickDelay,
+        Callback = function(val)
+            config.clickDelay = val
+            saveConfig(config)
+        end
+    })
+    TabXexx:Toggle({
+        Title = "Fast Attack Mode (No Cooldown Tools)",
+        Value = config.fastAttack,
+        Callback = function(val)
+            config.fastAttack = val
+            saveConfig(config)
+        end
+    })
+
+    local SodiumConfig = Window.ConfigManager:Config("DiabloHubConfig")
+    TabConfig:Section({ Title = "Profile Visual Configurations" })
+    TabConfig:Dropdown({
+        Title = "Interface Core Theme",
+        Multi = false,
+        Options = {"Dark", "Light", "Midnight", "Indigo", "Crimson"},
+        Default = config.theme,
+        Callback = function(selectedTheme)
+            config.theme = selectedTheme
+            saveConfig(config)
+        end
+    })
+
+    WindUI:Notify({
+        Title = "Diablo Universal Initialized",
+        Content = "Successfully operational under WindUI framework.",
+        Icon = "check-circle",
+        Duration = 4
+    })
+end
+
+----------------------------------------------------
+-- CHECKING KEY AUTHENTICATION
+----------------------------------------------------
+if hasValidKeySaved() then
+    LoadMainScript()
+else
+    local KeyWindow = WindUI:CreateWindow({
+        Title        = "Diablo Script | Key System",
+        Icon         = "rbxassetid://909097323",
+        Author       = "Verification Required",
+        Folder       = configFolder,
+        Size         = UDim2.fromOffset(400, 240),
+        Transparent  = false,
+        NewElements  = true,
+        Resizable    = false,
+        User         = { Enabled = false },
+        Topbar       = { ButtonsType = "Mac" }
+    })
+
+    local TabKey = KeyWindow:Tab({ Title = "Verification", Icon = "key" })
+    TabKey:Section({ Title = "Enter Authorization Key" })
+
+    local currentInputKey = ""
+
+    TabKey:Input({
+        Title = "Input Key",
+        Placeholder = "Enter script key here...",
+        Callback = function(text)
+            currentInputKey = text
+        end
+    })
+
+    TabKey:Button({
+        Title = "Check Key",
+        Callback = function()
+            if currentInputKey == "no key" then
+                WindUI:Notify({
+                    Title = "Access Granted",
+                    Content = "Correct Key! Loading script layout...",
+                    Icon = "check-circle",
+                    Duration = 3
+                })
+                saveValidKey()
+                task.wait(1)
+                KeyWindow:Destroy()
+                LoadMainScript()
+            else
+                WindUI:Notify({
+                    Title = "Access Denied",
+                    Content = "Invalid key entered. Please try again.",
+                    Icon = "alert-triangle",
+                    Duration = 3
+                })
+            end
+        end
+    })
+end
+
+end)
