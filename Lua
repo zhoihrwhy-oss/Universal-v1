@@ -306,6 +306,172 @@ Btn3.MouseButton1Click:Connect(function()
     wsActive = not wsActive
     if wsActive then
         playTween(Btn3, {BackgroundColor3 = Color3.fromRGB(200, 60, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+-- [[ MONUX NUST HUB - DIABLO SCRIPT (BLOOD AURA TARGET EDITION) ]]
+local Player = game.Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+-- 1. Setup UI Dasar
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "DiabloHubScript"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+-- 2. Frame Utama
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 240, 0, 360)
+MainFrame.Position = UDim2.new(0.5, -120, 0.3, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 5, 5)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+-- Latar Belakang Gambar
+local BackgroundImage = Instance.new("ImageLabel")
+BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+BackgroundImage.BackgroundTransparency = 1
+BackgroundImage.Image = "rbxassetid://9090973238"
+BackgroundImage.ScaleType = Enum.ScaleType.Crop
+BackgroundImage.ImageTransparency = 0.3
+BackgroundImage.ZIndex = 1
+BackgroundImage.Parent = MainFrame
+
+local UICorner_Main = Instance.new("UICorner")
+UICorner_Main.CornerRadius = UDim.new(0, 10)
+UICorner_Main.Parent = MainFrame
+
+-- Border Glow Merah Menyala
+local UIStroke_Main = Instance.new("UIStroke")
+UIStroke_Main.Color = Color3.fromRGB(180, 0, 0)
+UIStroke_Main.Thickness = 1.8
+UIStroke_Main.Transparency = 0.4
+UIStroke_Main.Parent = MainFrame
+
+-- 3. Judul Atas
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.7, 0, 0, 40)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.Text = "⚡ DIABLO SCRIPT"
+Title.TextColor3 = Color3.fromRGB(255, 40, 40)
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ZIndex = 2
+Title.Parent = MainFrame
+
+----------------------------------------------------
+-- SYSTEM UTILITY, ANIMASI & MINIMIZE
+----------------------------------------------------
+local fastInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+local isMinimized = false
+
+-- Tombol Perkecil / Minimize (_)
+local MiniBtn = Instance.new("TextButton")
+MiniBtn.Size = UDim2.new(0, 25, 0, 25)
+MiniBtn.Position = UDim2.new(1, -30, 0, 7)
+MiniBtn.BackgroundColor3 = Color3.fromRGB(50, 10, 10)
+MiniBtn.Font = Enum.Font.GothamBold
+MiniBtn.Text = "_"
+MiniBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+MiniBtn.TextSize = 14
+MiniBtn.ZIndex = 3
+MiniBtn.Parent = MainFrame
+
+local UICorner_Mini = Instance.new("UICorner")
+UICorner_Mini.CornerRadius = UDim.new(0, 6)
+UICorner_Mini.Parent = MiniBtn
+
+-- Fungsi Pembuat Tombol Solid
+local function buatDesainTombol(btn, teks, yPos)
+    btn.Size = UDim2.new(0.88, 0, 0, 32)
+    btn.Position = UDim2.new(0.06, 0, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 8, 8)
+    btn.BackgroundTransparency = 0
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Text = teks
+    btn.TextColor3 = Color3.fromRGB(240, 200, 200)
+    btn.TextSize = 11
+    btn.AutoButtonColor = false
+    btn.ZIndex = 5
+    btn.Parent = MainFrame
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(120, 20, 20)
+    stroke.Thickness = 1
+    stroke.Parent = btn
+end
+
+local function playTween(obj, goal)
+    TweenService:Create(obj, fastInfo, goal):Play()
+end
+
+----------------------------------------------------
+-- LOGIKA & TRIGGER TOMBOL FITUR
+----------------------------------------------------
+
+-- [TOMBOL 1: DIABLO AUTO HIT]
+local Btn1 = Instance.new("TextButton")
+buatDesainTombol(Btn1, "Diablo Auto Hit: OFF", 45)
+local autoHitActive = false
+local hitConnection
+
+Btn1.MouseButton1Click:Connect(function()
+    autoHitActive = not autoHitActive
+    if autoHitActive then
+        playTween(Btn1, {BackgroundColor3 = Color3.fromRGB(180, 0, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+        Btn1.Text = "Diablo Auto Hit: ON"
+        hitConnection = RunService.RenderStepped:Connect(function()
+            local tool = Player.Character and Player.Character:FindFirstChildOfClass("Tool")
+            if tool and tool:FindFirstChild("Activate") then tool:Activate() end
+        end)
+    else
+        playTween(Btn1, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+        Btn1.Text = "Diablo Auto Hit: OFF"
+        if hitConnection then hitConnection:Disconnect() end
+    end
+end)
+
+-- [TOMBOL 2: JUMPPOWER 250]
+local Btn2 = Instance.new("TextButton")
+buatDesainTombol(Btn2, "Demonic Jump (250): OFF", 85)
+local jpActive = false
+
+Btn2.MouseButton1Click:Connect(function()
+    jpActive = not jpActive
+    local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.UseJumpPower = true
+        if jpActive then
+            playTween(Btn2, {BackgroundColor3 = Color3.fromRGB(200, 60, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
+            Btn2.Text = "Demonic Jump: ACTIVE"
+            hum.JumpPower = 250
+        else
+            playTween(Btn2, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
+            Btn2.Text = "Demonic Jump (250): OFF"
+            hum.JumpPower = 50
+        end
+    end
+end)
+
+-- [TOMBOL 3: WALK SPEED 100]
+local Btn3 = Instance.new("TextButton")
+buatDesainTombol(Btn3, "Hell Speed (100): OFF", 125)
+local wsActive = false
+local wsLoop
+
+Btn3.MouseButton1Click:Connect(function()
+    wsActive = not wsActive
+    if wsActive then
+        playTween(Btn3, {BackgroundColor3 = Color3.fromRGB(200, 60, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
         Btn3.Text = "Hell Speed: ACTIVE"
         wsLoop = RunService.RenderStepped:Connect(function()
             local hum = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
@@ -320,30 +486,59 @@ Btn3.MouseButton1Click:Connect(function()
     end
 end)
 
--- [TOMBOL 4: LOCK AURA]
+-- [TOMBOL 4: LOCK AURA (PLAYER, BOT, NPC MERAH)]
 local Btn4 = Instance.new("TextButton")
 buatDesainTombol(Btn4, "Blood Lock Aura: OFF", 165)
 local auraActive = false
-local auraVisual
+local auraLoop
+
+-- Fungsi lokal untuk memasang aura merah
+local function beriAuraMerah(modelTarget)
+    if not modelTarget:FindFirstChild("DiabloAuraVisual") then
+        local auraVisual = Instance.new("SelectionBox")
+        auraVisual.Name = "DiabloAuraVisual"
+        auraVisual.Color3 = Color3.fromRGB(255, 0, 0) -- Warna Merah Darah
+        auraVisual.LineThickness = 0.05
+        auraVisual.Adornee = modelTarget
+        auraVisual.Parent = modelTarget
+    end
+end
+
+-- Fungsi membersihkan semua aura yang terpasang
+local function bersihkanSemuaAura()
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("SelectionBox") and v.Name == "DiabloAuraVisual" then
+            v:Destroy()
+        end
+    end
+end
 
 Btn4.MouseButton1Click:Connect(function()
     auraActive = not auraActive
-    local hrp = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-    if auraActive and hrp then
+    if auraActive then
         playTween(Btn4, {BackgroundColor3 = Color3.fromRGB(120, 0, 0), TextColor3 = Color3.fromRGB(255, 255, 255)})
         Btn4.Text = "Blood Lock Aura: ON"
-        auraVisual = Instance.new("SelectionBox")
-        auraVisual.Name = "DiabloAuraVisual"
-        auraVisual.Color3 = Color3.fromRGB(255, 0, 0)
-        auraVisual.LineThickness = 0.06
-        auraVisual.Adornee = Player.Character
-        auraVisual.Parent = Player.Character
+        
+        -- Loop mendeteksi kita, NPC/Bot, dan Player lain secara realtime
+        auraLoop = RunService.Heartbeat:Connect(function()
+            -- 1. Aura untuk karakter kita sendiri
+            if Player.Character then beriAuraMerah(Player.Character) end
+            
+            -- 2. Aura untuk Player Lain & NPC/Bot di Workspace
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Humanoid") then
+                    local charModel = obj.Parent
+                    if charModel and charModel:IsA("Model") then
+                        beriAuraMerah(charModel)
+                    end
+                end
+            end
+        end)
     else
         playTween(Btn4, {BackgroundColor3 = Color3.fromRGB(30, 8, 8), TextColor3 = Color3.fromRGB(240, 200, 200)})
         Btn4.Text = "Blood Lock Aura: OFF"
-        if Player.Character and Player.Character:FindFirstChild("DiabloAuraVisual") then
-            Player.Character.DiabloAuraVisual:Destroy()
-        end
+        if auraLoop then auraLoop:Disconnect() end
+        bersihkanSemuaAura()
     end
 end)
 
@@ -411,11 +606,11 @@ CloseBtn.TextColor3 = Color3.fromRGB(255, 140, 140)
 CloseBtn.MouseButton1Click:Connect(function()
     if hitConnection then hitConnection:Disconnect() end
     if wsLoop then wsLoop:Disconnect() end
+    if auraLoop then auraLoop:Disconnect() end
     if floatLoop then floatLoop:Disconnect() end
     if floatPart then floatPart:Destroy() end
-    if Player.Character and Player.Character:FindFirstChild("DiabloAuraVisual") then
-        Player.Character.DiabloAuraVisual:Destroy()
-    end
+    bersihkanSemuaAura()
+    
     playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 0), BackgroundTransparency = 1})
     playTween(Title, {TextTransparency = 1})
     task.wait(0.2)
@@ -429,12 +624,12 @@ MiniBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
         MiniBtn.Text = "+"
-        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 40)}) -- Mengecilkan ukuran panel utama
+        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 40)})
         Btn1.Visible = false Btn2.Visible = false Btn3.Visible = false 
         Btn4.Visible = false Btn5.Visible = false Btn6.Visible = false CloseBtn.Visible = false
     else
         MiniBtn.Text = "_"
-        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 360)}) -- Mengembalikan panel utama ke ukuran semula
+        playTween(MainFrame, {Size = UDim2.new(0, 240, 0, 360)})
         task.wait(0.1)
         Btn1.Visible = true Btn2.Visible = true Btn3.Visible = true 
         Btn4.Visible = true Btn5.Visible = true Btn6.Visible = true CloseBtn.Visible = true
